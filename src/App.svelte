@@ -1,69 +1,123 @@
 <script>
-  import {onMount} from 'svelte';
-  let count = 0;
-  onMount(() => {
-    const interval = setInterval(() => count++, 1000);
-    return () => {
-      clearInterval(interval);
-    };
+  import { slide } from 'svelte/transition';
+  import vest from 'vest';
+  // import { create, enforce, test } from 'vest';
+  import isEmail from 'validator/es/lib/isEmail';
+
+  // destructing imports does not work at the top import level
+  const { create, enforce, test } = vest;
+
+  enforce.extend({ isEmail });
+
+  const initial = {
+    email: '',
+    password: ''
+  };
+
+  let errors = [];
+
+  const validate = create('login_form', (data = {}) => {
+    test('email', 'Email address is required', () =>
+      enforce(data.email).isNotEmpty()
+    );
+    test('email', 'Email address is not valid', () => {
+      enforce(data.email).isEmail();
+    });
+    test('password', 'Password is required', () =>
+      enforce(data.password).isNotEmpty()
+    );
+    test('password', 'Password must be at least 5 chars long', () =>
+      enforce(data.password).longerThanOrEquals(6)
+    );
   });
+
+  let values = { ...initial };
+
+  const submit = () => {
+    const res = validate(values);
+    if (res.hasErrors()) {
+      errors = Object.values(res.getErrors()).flat();
+      console.log(errors);
+      return;
+    }
+    console.log(values);
+  };
+
+  const reset = () => {
+    values = { ...initial };
+    errors = [];
+  };
 </script>
+
+<div class="container">
+  <form class="generic" on:submit|preventDefault={submit}>
+    <div>
+      <label>
+        <span>Email</span>
+        <input
+          type="text"
+          name="email"
+          placeholder="name@company.com"
+          bind:value={values.email}
+        />
+      </label>
+    </div>
+    <div>
+      <label>
+        <span>Password</span>
+        <input
+          type="password"
+          name="password"
+          placeholder="************"
+          bind:value={values.password}
+        />
+      </label>
+    </div>
+
+    {#if errors.length}
+      <div transition:slide|local>
+        <ul class="text-red-500">
+          {#each errors as err}
+            <li>{err}</li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+
+    <div>
+      <button type="submit">Login</button>
+      <button type="button" on:click={reset}>Reset</button>
+    </div>
+  </form>
+</div>
 
 <style>
   :global(body) {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
   }
-  .App {
-    text-align: center;
+  .container {
+    width: 600px;
+    margin: 0 auto;
+    margin: 4em auto;
+    max-width: 64em;
   }
-  .App code {
-    background: #0002;
-    padding: 4px 8px;
-    border-radius: 4px;
+  .generic span {
+    display: block;
+    font-weight: 600;
+    font-size: 0.8em;
+    padding-bottom: 5px;
   }
-  .App p {
-    margin: 0.4rem;
+  .generic input {
+    padding: 5px;
+    min-width: 200px;
   }
-
-  .App-header {
-    background-color: #f9f6f6;
-    color: #333;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
+  .generic div + div {
+    margin-top: 12px;
   }
-  .App-link {
-    color: #ff3e00;
-  }
-  .App-logo {
-    height: 36vmin;
-    pointer-events: none;
-    margin-bottom: 3rem;
-    animation: App-logo-pulse infinite 1.6s ease-in-out alternate;
-  }
-  @keyframes App-logo-pulse {
-    from {
-      transform: scale(1);
-    }
-    to {
-      transform: scale(1.06);
-    }
+  .generic ul {
+    color: red;
+    list-style: inside;
+    padding-left: 0;
   }
 </style>
-
-<div class="App">
-  <header class="App-header">
-    <img src="/logo.svg" class="App-logo" alt="logo" />
-    <p>Edit <code>src/App.svelte</code> and save to reload.</p>
-    <p>Page has been open for <code>{count}</code> seconds.</p>
-    <p>
-      <a class="App-link" href="https://svelte.dev" target="_blank" rel="noopener noreferrer">
-        Learn Svelte
-      </a>
-    </p>
-  </header>
-</div>
